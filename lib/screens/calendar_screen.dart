@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:table_calendar/table_calendar.dart';
 
 import '../models/exam.dart';
@@ -13,6 +16,19 @@ class _CalendarScreenState extends State<CalendarScreen> {
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
   final Map<DateTime, List<Exam>> _examsByDate = {};
+  late GoogleMapController _mapController;
+  Set<Marker> _markers = {};
+  LatLng? _currentLocation;
+
+  @override
+  void initState() {
+    super.initState();
+    _getCurrentLocation().then((position) {
+      setState(() {
+        _currentLocation = LatLng(position.latitude, position.longitude);
+      });
+    });
+  }
 
   void _addExam(Exam exam) {
     setState(() {
@@ -21,7 +37,48 @@ class _CalendarScreenState extends State<CalendarScreen> {
         _examsByDate[date] = [];
       }
       _examsByDate[date]!.add(exam);
+
+      if (exam.latitude != null && exam.longitude != null) {
+        _markers.add(Marker(
+          markerId: MarkerId(exam.subject),
+          position: LatLng(exam.latitude!, exam.longitude!),
+          infoWindow: InfoWindow(title: exam.subject, snippet: exam.location),
+        ));
+      }
     });
+  }
+
+  Future<Position> _getCurrentLocation() async {
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      throw Exception('Location services are disabled.');
+    }
+
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        throw Exception('Location permissions are denied.');
+      }
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      throw Exception(
+          'Location permissions are permanently denied, we cannot request permissions.');
+    }
+
+    return await Geolocator.getCurrentPosition();
+  }
+
+  void _onMapCreated(GoogleMapController controller) {
+    _mapController = controller;
+    if (_currentLocation != null) {
+      // Move the camera to the user's current location when the map is created
+      _mapController.moveCamera(CameraUpdate.newLatLngZoom(_currentLocation!, 12));
+    }
   }
 
   @override
@@ -47,7 +104,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
               }
             },
           ),
-
         ],
       ),
       body: Padding(
@@ -105,8 +161,21 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     ),
                   ],
                 ),
-              )
-
+              ),
+            const SizedBox(height: 16),
+            if (_currentLocation != null)
+              Container(
+                height: 300,
+                width: double.infinity,
+                child: GoogleMap(
+                  initialCameraPosition: CameraPosition(
+                    target: _currentLocation!,
+                    zoom: 12,
+                  ),
+                  markers: _markers,
+                  onMapCreated: _onMapCreated,
+                ),
+              ),
           ],
         ),
       ),
