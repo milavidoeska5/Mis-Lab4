@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../models/exam.dart';
+import 'pick_location_screen.dart';
 
 class AddExamScreen extends StatefulWidget {
   @override
@@ -65,6 +67,19 @@ class _AddExamScreenState extends State<AddExamScreen> {
     );
   }
 
+  void _pickRandomLocation() async {
+    final LatLng? pickedLocation = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => PickLocationScreen()),
+    );
+    if (pickedLocation != null) {
+      setState(() {
+        _latitude = pickedLocation.latitude;
+        _longitude = pickedLocation.longitude;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -90,10 +105,10 @@ class _AddExamScreenState extends State<AddExamScreen> {
                 ),
                 TextFormField(
                   controller: _locationController,
-                  decoration: InputDecoration(labelText: 'Location'),
+                  decoration: InputDecoration(labelText: 'Location Name'),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'Please enter the location';
+                      return 'Please enter the location name';
                     }
                     return null;
                   },
@@ -124,23 +139,35 @@ class _AddExamScreenState extends State<AddExamScreen> {
                   ],
                 ),
                 const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: () async {
-                    try {
-                      final position = await Geolocator.getCurrentPosition();
-                      setState(() {
-                        _latitude = position.latitude;
-                        _longitude = position.longitude;
-                      });
-                    } catch (e) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Failed to get location: $e'),
-                        ),
-                      );
-                    }
-                  },
-                  child: Text('Use Current Location'),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          try {
+                            final position = await _getCurrentLocation();
+                            setState(() {
+                              _latitude = position.latitude;
+                              _longitude = position.longitude;
+                            });
+                          } catch (e) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Failed to get location: $e')),
+                            );
+                          }
+                        },
+                        child: Text('Use Current Location'),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: _pickRandomLocation,
+                        child: Text('Pick Random Location'),
+                      ),
+                    ),
+                  ],
                 ),
                 if (_latitude != null && _longitude != null)
                   Padding(

@@ -6,6 +6,7 @@ import 'package:table_calendar/table_calendar.dart';
 
 import '../models/exam.dart';
 import 'add_exam_screen.dart';
+import 'exam_details_screen.dart';
 
 class CalendarScreen extends StatefulWidget {
   @override
@@ -76,7 +77,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
   void _onMapCreated(GoogleMapController controller) {
     _mapController = controller;
     if (_currentLocation != null) {
-      // Move the camera to the user's current location when the map is created
       _mapController.moveCamera(CameraUpdate.newLatLngZoom(_currentLocation!, 12));
     }
   }
@@ -99,7 +99,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               if (newExam != null && newExam is Exam) {
                 _addExam(newExam);
                 setState(() {
-                  _selectedDay = _focusedDay; // Refresh the calendar with the updated day.
+                  _selectedDay = _focusedDay;
                 });
               }
             },
@@ -118,7 +118,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               onDaySelected: (selectedDay, focusedDay) {
                 setState(() {
                   _selectedDay = selectedDay;
-                  _focusedDay = focusedDay; // update focusedDay when changing the selected day
+                  _focusedDay = focusedDay;
                 });
               },
               calendarStyle: CalendarStyle(
@@ -139,43 +139,35 @@ class _CalendarScreenState extends State<CalendarScreen> {
             ),
             const SizedBox(height: 16),
             if (_selectedDay != null)
-              Expanded(
-                child: ListView(
-                  children: _examsByDate[DateTime(
-                      _selectedDay!.year,
-                      _selectedDay!.month,
-                      _selectedDay!.day)] != null
-                      ? _examsByDate[DateTime(
-                      _selectedDay!.year,
-                      _selectedDay!.month,
-                      _selectedDay!.day)]!
-                      .map((exam) => ListTile(
-                    title: Text(exam.subject),
-                    subtitle: Text('${exam.dateTime} at ${exam.location}'),
-                  ))
-                      .toList()
-                      : [
-                    Text(
-                      'No exams for the selected day.',
-                      style: TextStyle(fontSize: 18, color: Colors.grey),
-                    ),
-                  ],
-                ),
-              ),
-            const SizedBox(height: 16),
-            if (_currentLocation != null)
-              Container(
-                height: 300,
-                width: double.infinity,
-                child: GoogleMap(
-                  initialCameraPosition: CameraPosition(
-                    target: _currentLocation!,
-                    zoom: 12,
+              if (_selectedDay != null)
+                Expanded(
+                  child: ListView(
+                    children: _examsByDate[DateTime(
+                        _selectedDay!.year, _selectedDay!.month, _selectedDay!.day)] != null
+                        ? _examsByDate[DateTime(
+                        _selectedDay!.year, _selectedDay!.month, _selectedDay!.day)]!
+                        .map((exam) => ListTile(
+                      title: Text(exam.subject),
+                      subtitle: Text('${exam.dateTime} at ${exam.location}'),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => ExamDetailsScreen(exam: exam),
+                          ),
+                        );
+                      },
+                    ))
+                        .toList()
+                        : [
+                      Text(
+                        'No exams for the selected day.',
+                        style: TextStyle(fontSize: 18, color: Colors.grey),
+                      ),
+                    ],
                   ),
-                  markers: _markers,
-                  onMapCreated: _onMapCreated,
                 ),
-              ),
+            const SizedBox(height: 16),
           ],
         ),
       ),
